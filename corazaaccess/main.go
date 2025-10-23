@@ -110,7 +110,8 @@ func processRequest(tx types.Transaction, req *http.Request) (*types.Interruptio
 		return in, nil
 	}
 	if req.Body != nil && req.Body != http.NoBody {
-		_, err := io.Copy(tx.RequestBodyWriter(), req.Body)
+		//_, err := io.Copy(tx.RequestBodyWriter(), req.Body)
+		_, err := io.Copy(tx, req.Body)
 		if err != nil {
 			return tx.Interruption(), err
 		}
@@ -144,4 +145,5 @@ func processRequest(tx types.Transaction, req *http.Request) (*types.Interruptio
 
 	return tx.ProcessRequestBody()
 }
+
 
