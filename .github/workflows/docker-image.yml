@@ -1,0 +1,39 @@
+name: Docker Image CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+
+  build:
+
+    runs-on: ubuntu-latest
+        
+    steps:
+
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Build backend and Docker image
+      run: |
+        # 生成版本号（使用时间戳 + Git 短 SHA）
+        VERSION=$(date +%Y%m%d%H%M%S)-$(git rev-parse --short HEAD)
+        cd corazaaccess && docker build . --file Dockerfile --tag protection:$VERSION
+        
+        # 保存镜像信息供后续步骤使用
+        echo "IMAGE_NAME=protection" >> $GITHUB_ENV
+        echo "IMAGE_VERSION=$VERSION" >> $GITHUB_ENV
+        
+    - name: Save Docker image
+      run: |
+        docker save ${{ env.IMAGE_NAME }}:${{ env.IMAGE_VERSION }} -o protection.tar
+        
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: protection
+        path: |
+          protection.tar
