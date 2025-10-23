@@ -18,9 +18,9 @@ const (
 	httpStatusError   int = 401
 )
 
-type nopCloser struct{}
+// type nopCloser struct{}
 
-func (nopCloser) Close() error { return nil }
+// func (nopCloser) Close() error { return nil }
 
 func main() {
 	// 修复 WAF 配置
@@ -121,13 +121,16 @@ func processRequest(tx types.Transaction, req *http.Request) (*types.Interruptio
 			return tx.Interruption(), err
 		}
 		_ = req.Body.Close()
-		
-		// 将请求体写入事务 - WriteRequestBody 返回写入的字节数和可能的错误
-		_, err = tx.WriteRequestBody(bodyBytes)
+
+		// 将请求体写入事务 - WriteRequestBody 返回三个值
+		interruption, _, err := tx.WriteRequestBody(bodyBytes)
+		if interruption != nil {
+			return interruption, nil
+		}
 		if err != nil {
 			return tx.Interruption(), err
 		}
-		
+
 		// 重新设置请求体为读取的数据
 		req.Body = io.NopCloser(bytes.NewReader(bodyBytes))
 	}
