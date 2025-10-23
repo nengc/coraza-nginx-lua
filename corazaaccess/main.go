@@ -22,7 +22,13 @@ type nopCloser struct{}
 func (nopCloser) Close() error { return nil }
 
 func main() {
-	waf, err := coraza.NewWAF(coraza.NewWAFConfig().WithRequestBodyAccess(coraza.NewRequestBodyConfig().WithInMemoryLimit(100)).WithDirectivesFromFile("/src/coraza.conf").WithDirectivesFromFile("/src/coreruleset/crs-setup.conf.example").WithDirectivesFromFile("/src/coreruleset/rules/*.conf"))
+	// 修复1: WithRequestBodyAccess 不再接受参数
+	waf, err := coraza.NewWAF(coraza.NewWAFConfig().
+		WithRequestBodyAccess(). // 移除了参数
+		WithRequestBodyLimit(100). // 使用 WithRequestBodyLimit 替代
+		WithDirectivesFromFile("/src/coraza.conf").
+		WithDirectivesFromFile("/src/coreruleset/crs-setup.conf.example").
+		WithDirectivesFromFile("/src/coreruleset/rules/*.conf"))
 	if err != nil {
 		panic(err)
 	}
@@ -39,11 +45,13 @@ func main() {
 		if uri == "" {
 			http.Error(w, "X-Coraza-URL cannot be empty", httpStatusError)
 			fmt.Println("X-Coraza-URL cannot be empty")
+			return // 添加了 return
 		}
 		u, err := url.Parse(uri)
 		if err != nil {
 			http.Error(w, err.Error(), httpStatusError)
 			fmt.Println(err.Error())
+			return // 添加了 return
 		}
 		*r.URL = *u
 
@@ -105,7 +113,8 @@ func processRequest(tx types.Transaction, req *http.Request) (*types.Interruptio
 		return in, nil
 	}
 	if req.Body != nil && req.Body != http.NoBody {
-		_, err := io.Copy(tx.RequestBodyWriter(), req.Body)
+		// 修复2: 使用 io.Copy(tx, req.Body) 替代 tx.RequestBodyWriter()
+		_, err := io.Copy(tx, req.Body) // Transaction 实现了 io.Writer 接口
 		if err != nil {
 			return tx.Interruption(), err
 		}
