@@ -17,23 +17,37 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
       
-    - name: Build backend and Docker image
+    - name: Build Protection
       run: |
         # 生成版本号（使用时间戳 + Git 短 SHA）
         VERSION=$(date +%Y%m%d%H%M%S)-$(git rev-parse --short HEAD)
         cd corazaaccess && docker build . --file Dockerfile --tag protection:$VERSION
         
         # 保存镜像信息供后续步骤使用
-        echo "IMAGE_NAME=protection" >> $GITHUB_ENV
         echo "IMAGE_VERSION=$VERSION" >> $GITHUB_ENV
         
-    - name: Save Docker image
+    - name: Save Protection
       run: |
-        docker save ${{ env.IMAGE_NAME }}:${{ env.IMAGE_VERSION }} -o protection.tar
+        docker save protection:${{ env.IMAGE_VERSION }} -o protection.tar
         
-    - name: Upload artifacts
+    - name: Upload Protection
       uses: actions/upload-artifact@v4
       with:
         name: protection
         path: |
           protection.tar
+
+    - name: Build Nginx
+      run: |
+        cd nginx && docker build . --file Dockerfile --tag nginx:${{ env.IMAGE_VERSION }}
+        
+    - name: Save Nginx
+      run: |
+        docker save nginx:${{ env.IMAGE_VERSION }} -o nginx.tar
+        
+    - name: Upload nginx
+      uses: actions/upload-artifact@v4
+      with:
+        name: nginx
+        path: |
+          nginx.tar
