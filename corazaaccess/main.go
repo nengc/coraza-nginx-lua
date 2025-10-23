@@ -1,3 +1,11 @@
+报错了：
+#21 15.44 ./main.go:25:72: too many arguments in call to coraza.NewWAFConfig().WithRequestBodyAccess
+#21 15.44 	have (unknown type)
+#21 15.44 	want ()
+#21 15.44 ./main.go:25:79: undefined: coraza.NewRequestBodyConfig
+#21 15.44 ./main.go:108:24: tx.RequestBodyWriter undefined (type types.Transaction has no field or method RequestBodyWriter)
+
+
 package main
 
 import (
@@ -22,7 +30,6 @@ type nopCloser struct{}
 func (nopCloser) Close() error { return nil }
 
 func main() {
-	// 修复1: WithRequestBodyAccess 不再接受参数
 	waf, err := coraza.NewWAF(coraza.NewWAFConfig().
 		WithRequestBodyAccess(). // 移除了参数
 		WithRequestBodyLimit(100). // 使用 WithRequestBodyLimit 替代
@@ -45,13 +52,11 @@ func main() {
 		if uri == "" {
 			http.Error(w, "X-Coraza-URL cannot be empty", httpStatusError)
 			fmt.Println("X-Coraza-URL cannot be empty")
-			return // 添加了 return
 		}
 		u, err := url.Parse(uri)
 		if err != nil {
 			http.Error(w, err.Error(), httpStatusError)
 			fmt.Println(err.Error())
-			return // 添加了 return
 		}
 		*r.URL = *u
 
@@ -113,8 +118,7 @@ func processRequest(tx types.Transaction, req *http.Request) (*types.Interruptio
 		return in, nil
 	}
 	if req.Body != nil && req.Body != http.NoBody {
-		// 修复2: 使用 io.Copy(tx, req.Body) 替代 tx.RequestBodyWriter()
-		_, err := io.Copy(tx, req.Body) // Transaction 实现了 io.Writer 接口
+		_, err := io.Copy(tx.RequestBodyWriter(), req.Body)
 		if err != nil {
 			return tx.Interruption(), err
 		}
