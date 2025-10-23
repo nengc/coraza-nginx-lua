@@ -122,11 +122,8 @@ func processRequest(tx types.Transaction, req *http.Request) (*types.Interruptio
 		}
 		_ = req.Body.Close()
 		
-		// 将请求体写入事务 - WriteRequestBody 返回三个值
-		_, interrupt, err := tx.WriteRequestBody(bodyBytes)
-		if interrupt != nil {
-			return interrupt, nil
-		}
+		// 将请求体写入事务 - WriteRequestBody 返回写入的字节数和可能的错误
+		_, err = tx.WriteRequestBody(bodyBytes)
 		if err != nil {
 			return tx.Interruption(), err
 		}
