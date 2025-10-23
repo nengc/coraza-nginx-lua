@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"net/http"
@@ -22,9 +23,10 @@ type nopCloser struct{}
 func (nopCloser) Close() error { return nil }
 
 func main() {
+	// 修复 WAF 配置
 	waf, err := coraza.NewWAF(coraza.NewWAFConfig().
-		WithRequestBodyAccess(). // 移除了参数
-		WithRequestBodyLimit(100). // 使用 WithRequestBodyLimit 替代
+		WithRequestBodyAccess().
+		WithRequestBodyLimit(100 * 1024). // 设置请求体大小限制为 100KB
 		WithDirectivesFromFile("/src/coraza.conf").
 		WithDirectivesFromFile("/src/coreruleset/crs-setup.conf.example").
 		WithDirectivesFromFile("/src/coreruleset/rules/*.conf"))
@@ -44,11 +46,13 @@ func main() {
 		if uri == "" {
 			http.Error(w, "X-Coraza-URL cannot be empty", httpStatusError)
 			fmt.Println("X-Coraza-URL cannot be empty")
+			return
 		}
 		u, err := url.Parse(uri)
 		if err != nil {
 			http.Error(w, err.Error(), httpStatusError)
 			fmt.Println(err.Error())
+			return
 		}
 		*r.URL = *u
 
@@ -110,40 +114,23 @@ func processRequest(tx types.Transaction, req *http.Request) (*types.Interruptio
 		return in, nil
 	}
 	if req.Body != nil && req.Body != http.NoBody {
-		//_, err := io.Copy(tx.RequestBodyWriter(), req.Body)
-		_, err := io.Copy(tx, req.Body)
+		// 修复：使用新的 API 处理请求体
+		// 首先读取整个请求体
+		bodyBytes, err := io.ReadAll(req.Body)
 		if err != nil {
 			return tx.Interruption(), err
 		}
 		_ = req.Body.Close()
-
-		reader, err := tx.RequestBodyReader()
+		
+		// 将请求体写入事务
+		_, err = tx.WriteRequestBody(bodyBytes)
 		if err != nil {
 			return tx.Interruption(), err
 		}
-		// req.Body is transparently reinizialied with a new io.ReadCloser.
-		// The http handler will be able to read it.
-		// Prior to Go 1.19 NopCloser does not implement WriterTo if the reader implements it.
-		// - https://github.com/golang/go/issues/51566
-		// - https://tip.golang.org/doc/go1.19#minor_library_changes
-		// This avoid errors like "failed to process request: malformed chunked encoding" when
-		// using io.Copy
-		// In Go 1.19 we just do `req.Body = io.NopCloser(reader)`
-		if rwt, ok := reader.(io.WriterTo); ok {
-			req.Body = struct {
-				io.Reader
-				io.WriterTo
-				io.Closer
-			}{reader, rwt, nopCloser{}}
-		} else {
-			req.Body = struct {
-				io.Reader
-				io.Closer
-			}{reader, nopCloser{}}
-		}
+		
+		// 重新设置请求体为读取的数据
+		req.Body = io.NopCloser(bytes.NewReader(bodyBytes))
 	}
 
 	return tx.ProcessRequestBody()
 }
-
-
