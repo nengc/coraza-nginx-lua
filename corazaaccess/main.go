@@ -26,7 +26,7 @@ func main() {
 	// 修复 WAF 配置
 	waf, err := coraza.NewWAF(coraza.NewWAFConfig().
 		WithRequestBodyAccess().
-		WithRequestBodyLimit(100 * 1024). // 设置请求体大小限制为 100KB
+		//WithRequestBodyLimit(100 * 1024). // 设置请求体大小限制为 100KB
 		WithDirectivesFromFile("/src/coraza.conf").
 		WithDirectivesFromFile("/src/coreruleset/crs-setup.conf.example").
 		WithDirectivesFromFile("/src/coreruleset/rules/*.conf"))
@@ -137,3 +137,4 @@ func processRequest(tx types.Transaction, req *http.Request) (*types.Interruptio
 
 	return tx.ProcessRequestBody()
 }
+
