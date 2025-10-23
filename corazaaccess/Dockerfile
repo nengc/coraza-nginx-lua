@@ -24,7 +24,9 @@ WORKDIR /src
 COPY --from=build /go/src/waf/waf /src/waf
 COPY --from=build /go/src/waf/coraza.conf-recommended /src/coraza.conf
 COPY --from=build /go/src/waf/coreruleset /src/coreruleset
+COPY --from=build /go/src/waf/last.conf /src/last.conf
 ENTRYPOINT [ "/src/waf" ]
+
 
 
 
