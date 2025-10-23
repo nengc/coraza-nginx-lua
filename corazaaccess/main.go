@@ -1,11 +1,3 @@
-报错了：
-#21 15.44 ./main.go:25:72: too many arguments in call to coraza.NewWAFConfig().WithRequestBodyAccess
-#21 15.44 	have (unknown type)
-#21 15.44 	want ()
-#21 15.44 ./main.go:25:79: undefined: coraza.NewRequestBodyConfig
-#21 15.44 ./main.go:108:24: tx.RequestBodyWriter undefined (type types.Transaction has no field or method RequestBodyWriter)
-
-
 package main
 
 import (
@@ -152,3 +144,4 @@ func processRequest(tx types.Transaction, req *http.Request) (*types.Interruptio
 
 	return tx.ProcessRequestBody()
 }
+
